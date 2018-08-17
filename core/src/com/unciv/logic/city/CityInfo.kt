@@ -28,59 +28,8 @@ class CityInfo {
     var workedTiles = HashSet<Vector2>()
     var isBeingRazed = false
 
-    internal val tileMap: TileMap
-        get() = civInfo.gameInfo.tileMap
-
-    fun getCenterTile(): TileInfo = tileMap[location]
-    fun getTiles(): List<TileInfo> = tiles.map { tileMap[it] }
-
-    fun getTilesInRange(): List<TileInfo> = getCenterTile().getTilesInDistance( 3)
-
-
-    // Remove resources required by buildings
-    fun getCityResources(): Counter<TileResource> {
-        val cityResources = Counter<TileResource>()
-
-        for (tileInfo in getTiles().filter { it.resource != null }) {
-            val resource = tileInfo.getTileResource()
-            if(resource.revealedBy!=null && !civInfo.tech.isResearched(resource.revealedBy!!)) continue
-            if (resource.improvement == tileInfo.improvement || tileInfo.isCityCenter()){
-                if(resource.resourceType == ResourceType.Strategic) cityResources.add(resource, 2)
-                else cityResources.add(resource, 1)
-            }
-
-        }
-
-        for (building in cityConstructions.getBuiltBuildings().filter { it.requiredResource != null }) {
-            val resource = GameBasics.TileResources[building.requiredResource]
-            cityResources.add(resource, -1)
-        }
-        return cityResources
-    }
-
-    val buildingUniques: List<String?>
-        get() = cityConstructions.getBuiltBuildings().filter { it.unique!=null }.map { it.unique }
-
-    fun getGreatPersonPoints(): Stats {
-        var greatPersonPoints = population.getSpecialists().times(3f)
-
-        for (building in cityConstructions.getBuiltBuildings())
-            if (building.greatPersonPoints != null)
-                greatPersonPoints.add(building.greatPersonPoints!!)
-
-        if (civInfo.buildingUniques.contains("+33% great person generation in all cities"))
-            greatPersonPoints = greatPersonPoints.times(1.33f)
-        if (civInfo.policies.isAdopted("Entrepreneurship"))
-            greatPersonPoints.gold *= 1.25f
-        if (civInfo.policies.isAdopted("Freedom"))
-            greatPersonPoints = greatPersonPoints.times(1.25f)
-
-        return greatPersonPoints
-    }
 
     constructor()   // for json parsing, we need to have a default constructor
-
-
     constructor(civInfo: CivilizationInfo, cityLocation: Vector2) {
         this.civInfo = civInfo
         setTransients()
@@ -114,13 +63,83 @@ class CityInfo {
         cityStats.update()
     }
 
+    //region pure functions
+    fun clone(): CityInfo {
+        val toReturn = CityInfo()
+        toReturn.population = population.clone()
+        toReturn.health=health
+        toReturn.name=name
+        toReturn.tiles.addAll(tiles)
+        toReturn.workedTiles.addAll(workedTiles)
+        toReturn.cityConstructions=cityConstructions.clone()
+        toReturn.expansion = expansion.clone()
+        toReturn.isBeingRazed=isBeingRazed
+        toReturn.location=location
+        return toReturn
+    }
+
+    internal val tileMap: TileMap
+        get() = civInfo.gameInfo.tileMap
+
+    fun getCenterTile(): TileInfo = tileMap[location]
+    fun getTiles(): List<TileInfo> = tiles.map { tileMap[it] }
+    fun getTilesInRange(): List<TileInfo> = getCenterTile().getTilesInDistance( 3)
+
+    fun getCityResources(): Counter<TileResource> {
+        val cityResources = Counter<TileResource>()
+
+        for (tileInfo in getTiles().filter { it.resource != null }) {
+            val resource = tileInfo.getTileResource()
+            if(resource.revealedBy!=null && !civInfo.tech.isResearched(resource.revealedBy!!)) continue
+            if (resource.improvement == tileInfo.improvement || tileInfo.isCityCenter()){
+                if(resource.resourceType == ResourceType.Strategic) cityResources.add(resource, 2)
+                else cityResources.add(resource, 1)
+            }
+
+        }
+
+        for (building in cityConstructions.getBuiltBuildings().filter { it.requiredResource != null }) {
+            val resource = GameBasics.TileResources[building.requiredResource]
+            cityResources.add(resource, -1)
+        }
+        return cityResources
+    }
+
+    fun getBuildingUniques(): List<String?> = cityConstructions.getBuiltBuildings().filter { it.unique != null }.map { it.unique }
+
+    fun getGreatPersonPoints(): Stats {
+        var greatPersonPoints = population.getSpecialists().times(3f)
+
+        for (building in cityConstructions.getBuiltBuildings())
+            if (building.greatPersonPoints != null)
+                greatPersonPoints.add(building.greatPersonPoints!!)
+
+        if (civInfo.getBuildingUniques().contains("+33% great person generation in all cities"))
+            greatPersonPoints = greatPersonPoints.times(1.33f)
+        if (civInfo.policies.isAdopted("Entrepreneurship"))
+            greatPersonPoints.gold *= 1.25f
+        if (civInfo.policies.isAdopted("Freedom"))
+            greatPersonPoints = greatPersonPoints.times(1.25f)
+
+        return greatPersonPoints
+    }
+
+    fun isCapital() = cityConstructions.isBuilt("Palace")
+
+    internal fun getMaxHealth(): Int {
+        return 200 + cityConstructions.getBuiltBuildings().sumBy { it.cityHealth }
+    }
+
+    override fun toString(): String {return name} // for debug
+    //endregion
+
+    //region state-changing functions
     fun setTransients() {
         population.cityInfo = this
         expansion.cityInfo = this
         cityStats.cityInfo = this
         cityConstructions.cityInfo = this
     }
-
 
     fun endTurn() {
         val stats = cityStats.currentCityStats
@@ -147,8 +166,6 @@ class CityInfo {
         population.unassignExtraPopulation()
     }
 
-    fun isCapital() = cityConstructions.isBuilt("Palace")
-
     fun moveToCiv(newCivInfo: CivilizationInfo){
         civInfo.cities.remove(this)
         newCivInfo.cities.add(this)
@@ -167,10 +184,5 @@ class CityInfo {
 
         civInfo.gameInfo.updateTilesToCities()
     }
-
-    internal fun getMaxHealth(): Int {
-        return 200 + cityConstructions.getBuiltBuildings().sumBy { it.cityHealth }
-    }
-
-    override fun toString(): String {return name} // for debug
+    //endregion
 }

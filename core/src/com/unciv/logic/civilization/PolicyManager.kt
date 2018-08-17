@@ -23,19 +23,20 @@ class PolicyManager {
         var cityModifier = 0.3 * (civInfo.cities.size - 1)
         if (isAdopted("Representation")) cityModifier *= (2 / 3f).toDouble()
         if (isAdopted("Piety Complete")) baseCost *= 0.9
-        if (civInfo.buildingUniques.contains("Culture cost of adopting new Policies reduced by 10%")) baseCost *= 0.9
+        if (civInfo.getBuildingUniques().contains("Culture cost of adopting new Policies reduced by 10%")) baseCost *= 0.9
         val cost: Int = Math.round(baseCost * (1 + cityModifier)).toInt()
         return cost - (cost % 5)
     }
-
 
     fun getAdoptedPolicies(): HashSet<String> = adoptedPolicies
 
     fun isAdopted(policyName: String): Boolean = adoptedPolicies.contains(policyName)
 
-    fun isAdoptable(policy: Policy) = !policy.name.endsWith("Complete")
-            && getAdoptedPolicies().containsAll(policy.requires!!)
-            && policy.getBranch().era <= civInfo.getEra()
+    fun isAdoptable(policy: Policy): Boolean {
+        return (!policy.name.endsWith("Complete")
+                && getAdoptedPolicies().containsAll(policy.requires!!)
+                && policy.getBranch().era <= civInfo.getEra())
+    }
 
     fun canAdoptPolicy(): Boolean = freePolicies > 0 || storedCulture >= getCultureNeededForNextPolicy()
 
@@ -82,6 +83,16 @@ class PolicyManager {
         storedCulture += culture
         if (!couldAdoptPolicyBefore && canAdoptPolicy())
             shouldOpenPolicyPicker = true
+    }
+
+    fun clone(): PolicyManager {
+        val toReturn = PolicyManager()
+        toReturn.numberOfAdoptedPolicies=numberOfAdoptedPolicies
+        toReturn.adoptedPolicies.addAll(adoptedPolicies)
+        toReturn.freePolicies=freePolicies
+        toReturn.shouldOpenPolicyPicker=shouldOpenPolicyPicker
+        toReturn.storedCulture=storedCulture
+        return toReturn
     }
 
 }

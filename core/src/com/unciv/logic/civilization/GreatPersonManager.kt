@@ -4,8 +4,16 @@ import com.unciv.models.stats.Stats
 
 class GreatPersonManager {
     private var pointsForNextGreatPerson = 100
-    private val greatPersonPoints = Stats()
+    private var greatPersonPoints = Stats()
     var freeGreatPeople=0
+
+    fun clone(): GreatPersonManager {
+        val toReturn = GreatPersonManager()
+        toReturn.freeGreatPeople=freeGreatPeople
+        toReturn.greatPersonPoints=greatPersonPoints.clone()
+        toReturn.pointsForNextGreatPerson=pointsForNextGreatPerson
+        return toReturn
+    }
 
     fun getNewGreatPerson(): String? {
         var greatPerson: String? = null
@@ -26,5 +34,6 @@ class GreatPersonManager {
     fun addGreatPersonPoints(greatPersonPoints: Stats) {
         greatPersonPoints.add(greatPersonPoints)
     }
+
 
 }

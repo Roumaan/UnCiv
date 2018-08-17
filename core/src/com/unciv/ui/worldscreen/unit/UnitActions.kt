@@ -22,7 +22,7 @@ class UnitActions {
     private fun constructImprovementAndDestroyUnit(unit:MapUnit, improvementName: String): () -> Unit {
         return {
             unit.getTile().improvement = improvementName
-            unit.removeFromTile()
+            unit.destroy()
         }
     }
 
@@ -47,38 +47,38 @@ class UnitActions {
             },true)
         }
 
-        if(unit.getBaseUnit().unitType!= UnitType.Civilian
+        if(unit.baseUnit().unitType!= UnitType.Civilian
                 && !unit.hasUnique("No defensive terrain bonus") && !unit.isFortified()) {
             actionList += UnitAction("Fortify", { unit.action = "Fortify 0" }, unit.currentMovement != 0f)
         }
 
-        if(unit.getBaseUnit().unitType!= UnitType.Civilian && unit.promotions.canBePromoted()){
+        if(unit.baseUnit().unitType!= UnitType.Civilian && unit.promotions.canBePromoted()){
                 actionList += UnitAction("Promote",
                         {UnCivGame.Current.screen = PromotionPickerScreen(unit)},
                         unit.currentMovement != 0f)
         }
 
-        if(unit.getBaseUnit().upgradesTo!=null && tile.getOwner()==unit.civInfo) {
-            var upgradedUnit = unit.getBaseUnit().getUpgradeUnit(unit.civInfo)
+        if(unit.baseUnit().upgradesTo!=null && tile.getOwner()==unit.civInfo) {
+            var upgradedUnit = unit.baseUnit().getUpgradeUnit(unit.civInfo)
 
             // Go up the upgrade tree until you find the first one which isn't obsolete
             while (upgradedUnit.obsoleteTech!=null && unit.civInfo.tech.isResearched(upgradedUnit.obsoleteTech!!))
                 upgradedUnit = upgradedUnit.getUpgradeUnit(unit.civInfo)
 
             if (upgradedUnit.isBuildable(unit.civInfo)) {
-                val goldCostOfUpgrade = (upgradedUnit.cost - unit.getBaseUnit().cost) * 2 + 10
+                val goldCostOfUpgrade = (upgradedUnit.cost - unit.baseUnit().cost) * 2 + 10
                 actionList += UnitAction("Upgrade to [${upgradedUnit.name}] ([$goldCostOfUpgrade] gold)",
                         {
                             unit.civInfo.gold -= goldCostOfUpgrade
                             val unitTile = unit.getTile()
-                            unit.removeFromTile()
+                            unit.destroy()
                             val newunit = unit.civInfo.placeUnitNearTile(unitTile.position, upgradedUnit.name)
                             newunit.health = unit.health
                             newunit.promotions = unit.promotions
                             newunit.currentMovement=0f
                         },
                         unit.civInfo.gold >= goldCostOfUpgrade
-                                && unit.currentMovement == unit.maxMovement.toFloat()  )
+                                && unit.currentMovement == unit.getMaxMovement().toFloat()  )
             }
         }
 
@@ -95,7 +95,7 @@ class UnitActions {
                         unit.civInfo.addCity(tile.position)
                         tile.improvement=null
                         unitTable.currentlyExecutingAction = null // In case the settler was in the middle of doing something and we then founded a city with it
-                        unit.removeFromTile()
+                        unit.destroy()
                     },
                     unit.currentMovement != 0f &&
                             !tile.getTilesInDistance(2).any { it.isCityCenter() })
@@ -126,7 +126,7 @@ class UnitActions {
             actionList += UnitAction( "Discover Technology",
                     {
                         unit.civInfo.tech.freeTechs += 1
-                        unit.removeFromTile()
+                        unit.destroy()
                         worldScreen.game.screen = TechPickerScreen(true, unit.civInfo)
 
                     },unit.currentMovement != 0f)
@@ -139,7 +139,7 @@ class UnitActions {
             actionList += UnitAction( "Start Golden Age",
                     {
                         unit.civInfo.goldenAges.enterGoldenAge()
-                        unit.removeFromTile()
+                        unit.destroy()
                     },unit.currentMovement != 0f
             )
             actionList += UnitAction("Construct Landmark",
@@ -151,7 +151,7 @@ class UnitActions {
             actionList += UnitAction( "Hurry Wonder",
                     {
                         tile.getCity()!!.cityConstructions.addConstruction(300 + 30 * tile.getCity()!!.population.population) //http://civilization.wikia.com/wiki/Great_engineer_(Civ5)
-                        unit.removeFromTile()
+                        unit.destroy()
                     },
                     unit.currentMovement != 0f &&
                     tile.isCityCenter() &&
@@ -167,7 +167,7 @@ class UnitActions {
             actionList += UnitAction("Conduct Trade Mission",
                     {
                         unit.civInfo.gold += 350 // + 50 * era_number - todo!
-                        unit.removeFromTile()
+                        unit.destroy()
                     },unit.currentMovement != 0f)
             actionList += UnitAction( "Construct Customs House",
                     constructImprovementAndDestroyUnit(unit, "Customs house"),
@@ -177,7 +177,7 @@ class UnitActions {
         actionList += UnitAction("Disband unit",
                 {
                     YesNoPopupTable("Do you really want to disband this unit?".tr(),
-                            {unit.removeFromTile(); worldScreen.update()} )
+                            {unit.destroy(); worldScreen.update()} )
                 },unit.currentMovement != 0f)
 
         return actionList
